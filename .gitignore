@@ -1,0 +1,30 @@
+
+# Python virtual environment
+.venv/
+venv/
+
+# Environment variables and API keys
+.env
+.env.*
+!.env.example
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code settings
+.vscode/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Generated vector database / indexes
+chroma_db/
+faiss_index/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
