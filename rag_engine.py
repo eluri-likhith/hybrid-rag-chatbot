@@ -4,7 +4,8 @@ import re
 import hashlib
 import tempfile
 from pathlib import Path
-
+import chromadb
+from langchain_chroma import Chroma
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_groq import ChatGroq
@@ -116,7 +117,10 @@ def build_retrieval_components(file_bytes, file_name):
 
     embeddings = get_embeddings()
 
-    # Use a document-specific collection name.
+    # Create a fresh in-memory ChromaDB client
+    client = chromadb.EphemeralClient()
+
+    # Document-specific collection
     file_hash = hashlib.sha256(file_bytes).hexdigest()[:20]
     collection_name = f"rag_{file_hash}"
 
@@ -125,8 +129,10 @@ def build_retrieval_components(file_bytes, file_name):
         embedding=embeddings,
         collection_name=collection_name,
         collection_metadata={"hnsw:space": "cosine"},
+        client=client
     )
 
+    # BM25 keyword retrieval
     tokenized_chunks = [
         re.findall(r"\w+", doc.page_content.lower())
         for doc in chunks
