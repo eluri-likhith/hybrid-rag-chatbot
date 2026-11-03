@@ -111,25 +111,30 @@ def create_chunks(documents):
 
 
 # Step 3: Build the vector database and BM25 index.
+# Step 3: Build the vector database and BM25 index.
 def build_retrieval_components(file_bytes, file_name):
     documents = load_uploaded_document(file_bytes, file_name)
     chunks = create_chunks(documents)
 
     embeddings = get_embeddings()
 
-    # Create a fresh in-memory ChromaDB client
-    client = chromadb.EphemeralClient()
-
-    # Document-specific collection
+    # Generate a unique collection name for each document.
     file_hash = hashlib.sha256(file_bytes).hexdigest()[:20]
     collection_name = f"rag_{file_hash}"
+
+    # Create a fresh persistent ChromaDB client.
+    chroma_path = tempfile.mkdtemp(prefix="chroma_")
+
+    client = chromadb.PersistentClient(
+        path=chroma_path
+    )
 
     vector_store = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
         collection_name=collection_name,
         collection_metadata={"hnsw:space": "cosine"},
-        client=client
+        client=client,
     )
 
     # BM25 keyword retrieval
@@ -141,7 +146,6 @@ def build_retrieval_components(file_bytes, file_name):
     bm25_index = BM25Okapi(tokenized_chunks)
 
     return vector_store, chunks, bm25_index
-
 
 # Step 4: Dense vector search.
 def dense_search(vector_store, user_query, k=5):
@@ -287,23 +291,29 @@ Answer:
 
 
 # Main function called by Streamlit.
-def answer_question(file_bytes, file_name, user_query):
-    vector_store, chunks, bm25_index = (
-        build_retrieval_components(file_bytes, file_name)
-    )
-
+def answer_question(
+    file_name,
+    user_query,
+    vector_store,
+    chunks,
+    bm25_index
+):
+    # Dense retrieval
     dense_results = dense_search(
         vector_store, user_query, k=5
     )
 
+    # BM25 retrieval
     bm25_results = bm25_search(
         user_query, chunks, bm25_index, k=5
     )
 
+    # Reciprocal Rank Fusion
     fused_results = reciprocal_rank_fusion(
         dense_results, bm25_results
     )
 
+    # Cross-encoder reranking
     reranked_results = rerank_chunks(
         user_query,
         fused_results,
@@ -311,12 +321,14 @@ def answer_question(file_bytes, file_name, user_query):
         top_k=3,
     )
 
+    # Groq answer generation
     answer = generate_answer(
         user_query,
         reranked_results,
         get_llm(),
     )
 
+    # Extract sources
     sources = []
 
     for doc in reranked_results:
