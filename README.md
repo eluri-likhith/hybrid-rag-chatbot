@@ -15,6 +15,12 @@ A document question-answering application built using **Retrieval-Augmented Gene
 - **Interactive UI:** Provides a simple Streamlit interface for uploading documents and asking questions.
 - **Grounded Responses:** Instructs the LLM to acknowledge when the provided context does not contain the answer.
 
+## 🖼️ Working Architecture
+
+The following diagram illustrates the workflow of the Hybrid RAG Document AI Assistant, from document upload to grounded answer generation.
+
+![Hybrid RAG Document AI Assistant Architecture](assets/hybrid-rag-architecture.png)
+
 ## 🏗️ Architecture
 
 ```text
@@ -69,6 +75,53 @@ Streamlit Interface
 | Document Processing | LangChain, PyPDF, Docx2txt |
 | Environment Variables | python-dotenv |
 
+## 📊 Retrieval Evaluation Results
+
+The retrieval pipeline was evaluated using ranking-based metrics to measure how effectively the system retrieves relevant document chunks.
+
+| Evaluation Metric | Score |
+|---|---:|
+| Precision@K | 0.60 |
+| Recall@K | 1.00 |
+| Mean Reciprocal Rank (MRR) | 1.00 |
+| Retrieval Latency | 1.01 seconds |
+
+### Metric Interpretation
+
+- **Precision@K (0.60):** On average, 60% of the retrieved top-K results were relevant.
+- **Recall@K (1.00):** All relevant results in the evaluation ground truth were retrieved within the selected K.
+- **MRR (1.00):** The first relevant result appeared at the top of the ranking for the evaluated queries.
+- **Retrieval Latency (1.01 seconds):** The measured time for the retrieval process.
+
+These results describe the evaluation queries and dataset used; they do not guarantee identical performance for every document or question.
+
+## ⏱️ Latency Evaluation
+
+Latency was considered at different stages of the RAG pipeline to understand response-time performance.
+
+| Pipeline Stage | Measured Time |
+|---|---:|
+| Cross-Encoder Reranking | 0.7053 seconds |
+| Groq LLM Answer Generation | 1.5385 seconds |
+| Total End-to-End Response Time | 2.2944 seconds |
+
+**Note:** These are observed timings from a separate measurement. Retrieval latency of 1.01 seconds is a separate measurement and should not be added to these values as if all measurements came from the same execution.
+
+## 🧠 LLM Evaluation
+
+The answer-generation stage was considered using the following qualitative evaluation dimensions:
+
+| Evaluation Dimension | Purpose |
+|---|---|
+| Faithfulness | Checks whether the generated answer is supported by the retrieved document context. |
+| Answer Relevance | Checks whether the response directly addresses the user's question. |
+| Groundedness | Checks whether the answer is based on retrieved information rather than unsupported outside knowledge. |
+| Hallucination Checking | Identifies claims that are not supported by the provided context. |
+
+The prompt instructs the LLM to use the retrieved context, avoid unsupported claims, and acknowledge when the answer is unavailable in the document.
+
+**Evaluation note:** These are the LLM evaluation criteria used to assess answer quality. Numerical LLM evaluation scores are not reported because verified numerical results are not available.
+
 ## 📂 Project Structure
 
 ```text
@@ -78,6 +131,8 @@ hybrid-rag-document-assistant/
 ├── requirements.txt
 ├── .gitignore
 ├── README.md
+├── assets/
+│   └── hybrid-rag-architecture.png
 └── .env                 # Local only; never commit
 ```
 
@@ -136,19 +191,26 @@ Open the local URL printed in the terminal, usually `http://localhost:8501`.
 ## 🔍 How Hybrid Retrieval Works
 
 ### Dense Retrieval
+
 Documents are embedded using `sentence-transformers/all-MiniLM-L6-v2` and stored in ChromaDB. Dense retrieval finds passages with similar semantic meaning, even when they do not share the exact words in the query.
 
 ### Sparse Retrieval
+
 BM25 ranks document chunks according to keyword relevance, helping retrieve passages that contain important terms from the question.
 
 ### Reciprocal Rank Fusion
+
 RRF combines the ranked results from dense and sparse retrieval into a single ranking.
 
 ### Cross-Encoder Reranking
+
 A cross-encoder scores the relationship between the user's query and each retrieved chunk. The highest-ranked chunks are passed to the LLM.
 
 ### Grounded Answer Generation
+
 The retrieved chunks are provided as context to the Groq-hosted LLM. The prompt instructs the model to answer from that context and avoid inventing missing information.
+
+
 
 ## 🔐 Security Considerations
 
@@ -165,22 +227,23 @@ The retrieved chunks are provided as context to the Groq-hosted LLM. The prompt 
 - Retrieval quality depends on document quality, chunking, embeddings, and ranking.
 - The LLM may occasionally produce inaccurate answers despite context-grounding instructions.
 - The current implementation builds retrieval components for each question, which may increase response time for large documents.
-- Retrieval evaluation metrics such as Recall@K, Precision@K, MRR, and NDCG are not currently exposed in the Streamlit interface.
+- The reported evaluation metrics are based on the available evaluation queries and may vary with different documents and datasets.
+- Numerical LLM evaluation scores have not yet been established.
 
 ## 🔮 Future Improvements
 
-- Add retrieval evaluation using Recall@K, Precision@K, MRR, and NDCG.
-- Measure end-to-end latency and individual pipeline stages.
+- Expand retrieval evaluation using additional datasets and queries.
+- Add automated numerical LLM evaluation and human feedback.
+- Optimize retrieval latency and end-to-end response time.
 - Add document caching and incremental indexing.
 - Support multiple documents in a single knowledge base.
 - Add automated tests, logging, and error monitoring.
 - Improve deployment configuration and resource management.
 - Add OCR support for scanned PDFs.
-- Deploy the application using Streamlit Community Cloud.
 
 ## 👨‍💻 Project Purpose
 
-This project demonstrates practical implementation of a Hybrid RAG pipeline, combining semantic retrieval, keyword retrieval, rank fusion, reranking, and LLM-based answer generation in an interactive document assistant.
+This project demonstrates practical implementation of a Hybrid RAG pipeline, combining semantic retrieval, keyword retrieval, rank fusion, reranking, and LLM-based answer generation in an interactive document assistant. It also demonstrates the use of, fast retrieval, retrieval metrics, reducing latency ,latency measurements, and qualitative LLM evaluation criteria to assess system performance.
 
 ## 📜 License
 
